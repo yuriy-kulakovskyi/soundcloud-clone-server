@@ -2,6 +2,7 @@ const userModel = require("../Models/userModel");
 const bcrypt = require("bcrypt");
 const validator = require("validator");
 const jwt = require("jsonwebtoken");
+const path = require('path');
 
 const createToken = (_id) => {
   const jwtkey = process.env.JWT_SECRET_KEY;
@@ -34,6 +35,10 @@ const registerUser = async (req, res) => {
 
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(user.password, salt);
+
+    if (req.file) {
+      user.avatar = `/uploads/images/${req.file.filename}`;
+    }
 
     await user.save();
 
@@ -93,4 +98,23 @@ const getUsers = async(req, res) => {
   }
 }
 
-module.exports = { registerUser, loginUser, findUser, getUsers };
+const getAvatar = async (req, res) => {
+  try {
+    const avatarPath = req.params.avatar;
+    const fullPath = path.join(__dirname, '..', 'public/uploads/images', avatarPath);
+
+    console.log('Full path:', fullPath); // Додайте для перевірки шляху
+
+    if (fs.existsSync(fullPath)) {
+      res.sendFile(fullPath);
+    } else {
+      res.status(404).json({ error: 'Avatar not found' });
+    }
+  } catch (err) {
+    console.error('Error sending avatar:', err);
+    res.status(500).json({ error: 'Failed to send avatar' });
+  }
+};
+
+
+module.exports = { registerUser, loginUser, findUser, getUsers, getAvatar };
