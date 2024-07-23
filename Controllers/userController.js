@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const validator = require("validator");
 const jwt = require("jsonwebtoken");
 const path = require('path');
+const songModel = require("../Models/songModel");
 
 const createToken = (_id) => {
   const jwtkey = process.env.JWT_SECRET_KEY;
@@ -39,6 +40,8 @@ const registerUser = async (req, res) => {
     if (req.file) {
       user.avatar = `/uploads/images/${req.file.filename}`;
     }
+
+    user.likedSongs = [];
 
     await user.save();
 
@@ -87,6 +90,23 @@ const findUser = async(req, res) => {
   }
 }
 
+const getUserWithoutToken = async(req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    const user = await userModel.findById(userId);
+
+    res.status(200).json({
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar
+    });
+  } catch(err) {
+    console.log(err);
+    res.status(500).json(err);
+  }
+}
+
 const getUsers = async(req, res) => {
   try {
     const users = await userModel.find();
@@ -103,7 +123,7 @@ const getAvatar = async (req, res) => {
     const avatarPath = req.params.avatar;
     const fullPath = path.join(__dirname, '..', 'public/uploads/images', avatarPath);
 
-    console.log('Full path:', fullPath); // Додайте для перевірки шляху
+    console.log('Full path:', fullPath);
 
     if (fs.existsSync(fullPath)) {
       res.sendFile(fullPath);
@@ -116,5 +136,83 @@ const getAvatar = async (req, res) => {
   }
 };
 
+// like song function
+const like = async (req, res) => {
+  const userId = req.params.userId;
+  const songId = req.params.songId;
 
-module.exports = { registerUser, loginUser, findUser, getUsers, getAvatar };
+  try {
+    const user = await userModel.findById(userId);
+
+    if (!user)
+      return res.status(404).json("User not found...");
+
+    user.likedSongs.push(songId);
+
+    await user.save();
+
+    res.status(200).json(user.likedSongs);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json(err);
+  }
+}
+
+// dislike song function
+const dislike = async (req, res) => {
+  const userId = req.params.userId;
+  const songId = req.params.songId;
+
+  try {
+    const user = await userModel.findById(userId);
+    const song = await songModel.findById(songId);
+
+    if (!user)
+      return res.status(404).json("User not found...");
+
+    user.likedSongs = user.likedSongs.filter(
+      song => !song.equals(songId)
+    );
+    
+    await user.save();
+
+    res.status(200).json(user.likedSongs);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json(err);
+  }
+}
+
+const getLikedSongs = async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    const user = await userModel.findById(userId);
+
+    if (!user)
+      return res.status(404).json("User not found...");
+
+    // find songs by the list of id's and pass them to the client
+    const likedSongs = await songModel.find({
+      _id: { $in: user.likedSongs }
+    });
+
+    res.status(200).json(likedSongs);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json(err);
+  }
+}
+
+
+module.exports = { 
+  registerUser, 
+  loginUser, 
+  findUser, 
+  getUsers, 
+  getAvatar, 
+  getUserWithoutToken,
+  getLikedSongs,
+  like,
+  dislike
+};
