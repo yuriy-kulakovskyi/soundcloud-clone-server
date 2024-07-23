@@ -35,4 +35,7 @@ app.listen(port, (req, res) => {
   console.log(`Server is running on port: ${port}`);
 });
 
-mongoose.connect(uri).then(() => console.log("Mongo connection established")).catch((err) => console.log("Mongo connection failed: ", err.message))
+mongoose.connect('mongodb://localhost:27017/yourdbname', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => console.log("Mongo connection established")).catch((err) => console.log("Mongo connection failed: ", err.message))
